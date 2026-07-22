@@ -53,6 +53,10 @@ export const loginUser = async (req, res) => {
 export const refreshUserSession = async (req, res) => {
   const { sessionId, refreshToken } = req.cookies;
 
+  if (!sessionId || !refreshToken) {
+    throw createHttpError(401, 'Missing session credentials');
+  }
+
   const session = await Session.findOne({
     _id: sessionId,
     refreshToken,
@@ -62,11 +66,27 @@ export const refreshUserSession = async (req, res) => {
     throw createHttpError(401, 'Session not found');
   }
 
-  if (new Date() > session.refreshTokenValidUntil) {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  };
+
+  if (session.refreshTokenValidUntil < new Date()) {
+    await Session.deleteOne({
+      _id: session._id,
+    });
+
+    res.clearCookie('sessionId', cookieOptions);
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
+
     throw createHttpError(401, 'Session token expired');
   }
 
-  await Session.deleteOne({ _id: session._id });
+  await Session.deleteOne({
+    _id: session._id,
+  });
 
   const newSession = await createSession(session.userId);
 
