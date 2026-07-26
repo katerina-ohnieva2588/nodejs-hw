@@ -1,6 +1,8 @@
 import { isHttpError } from 'http-errors';
 
 export const errorHandler = (err, req, res, next) => {
+  console.error('ERROR:', err);
+
   if (isHttpError(err)) {
     return res.status(err.status).json({
       message: err.message,
@@ -8,6 +10,6 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   res.status(500).json({
-    message: 'Internal Server Error',
+    message: err.message || 'Internal Server Error',
   });
 };
